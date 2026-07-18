@@ -1,15 +1,20 @@
 import cv2
 import mediapipe as mp
+from mediapipe.tasks import python
+from mediapipe.tasks.python import vision
 
-#detect tangan
-mp_hands = mp.solutions.hands
-
-hands = mp_hands.Hands(
-    static_image_mode=False,
-    max_num_hands=1,
-    min_detection_confidence=0.5,
+# detect tangan - pakai MediaPipe Tasks API (baru)
+base_options = python.BaseOptions(model_asset_path='hand_landmarker.task')
+options = vision.HandLandmarkerOptions(
+    base_options=base_options,
+    running_mode=vision.RunningMode.VIDEO,
+    num_hands=1,
+    min_hand_detection_confidence=0.5,
     min_tracking_confidence=0.5
 )
+
+landmarker = vision.HandLandmarker.create_from_options(options)
+
 
 def finger_up(tip, pip, landmarks):
     return landmarks[tip].y < landmarks[pip].y
@@ -30,8 +35,10 @@ def is_peace(landmarks):
         and not pinky_up
     )
 
-#open camera
+# open camera
 cap = cv2.VideoCapture(0)
+
+frame_timestamp_ms = 0
 
 while True:
 
@@ -47,19 +54,24 @@ while True:
         cv2.COLOR_BGR2RGB
     )
 
-    hand_result = hands.process(rgb)
+    # convert ke MediaPipe Image format
+    mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb)
+
+    # detect hands pakai VIDEO mode (butuh timestamp)
+    frame_timestamp_ms += 33  # ~30fps
+    hand_result = landmarker.detect_for_video(mp_image, frame_timestamp_ms)
 
     peace_detected = False
 
-    if hand_result.multi_hand_landmarks:
+    if hand_result.hand_landmarks:
 
-        for hand_landmarks in hand_result.multi_hand_landmarks:
+        for hand_landmarks in hand_result.hand_landmarks:
 
-            if is_peace(hand_landmarks.landmark):
+            if is_peace(hand_landmarks):
                 peace_detected = True
                 break
 
-    #blur efek
+    # blur efek
 
     if peace_detected:
 
@@ -79,3 +91,4 @@ while True:
 
 cap.release()
 cv2.destroyAllWindows()
+landmarker.close()

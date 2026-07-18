@@ -1,0 +1,951 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kiowo Gesture — Foto Kita</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --bg: #f3f4f6;
+            --surface: #ffffff;
+            --accent: #4b5563;
+            --accent-dim: rgba(75, 85, 99, 0.08);
+            --accent-glow: rgba(75, 85, 99, 0.15);
+            --text: #374151;
+            --text-dim: #6b7280;
+            --border: rgba(0, 0, 0, 0.06);
+            --radius: 16px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* Subtle ambient glow */
+        body::before {
+            content: '';
+            position: fixed;
+            top: -20%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, var(--accent-dim) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .app {
+            position: relative;
+            z-index: 1;
+            max-width: 900px;
+            width: 100%;
+            padding: 2.5rem 1.5rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2rem;
+        }
+
+        /* Header */
+        header {
+            text-align: center;
+        }
+
+        header h1 {
+            font-size: 2.2rem;
+            font-weight: 800;
+            color: var(--text);
+            margin-bottom: 0.4rem;
+            letter-spacing: -0.5px;
+        }
+
+        header p {
+            color: var(--text-dim);
+            font-size: 1rem;
+            font-weight: 400;
+        }
+
+        /* Camera Card */
+        .camera-card {
+            width: 100%;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1.25rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04), 0 1px 8px rgba(0, 0, 0, 0.02);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1.25rem;
+        }
+
+        .canvas-wrap {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 16/9;
+            background: #18181b;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        video {
+            display: none;
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        /* Loading Overlay */
+        .loader-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(255, 255, 255, 0.96);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 1rem;
+            z-index: 10;
+            border-radius: 12px;
+            transition: opacity 0.3s ease;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--accent-dim);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .loader-overlay p {
+            color: var(--text-dim);
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        /* REC Indicator */
+        .rec-badge {
+            position: absolute;
+            top: 14px;
+            right: 14px;
+            background: rgba(0, 0, 0, 0.65);
+            padding: 0.35rem 0.75rem;
+            border-radius: 50px;
+            display: none;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: var(--accent);
+            border: 1px solid var(--accent-dim);
+            z-index: 5;
+            pointer-events: none;
+        }
+
+        .rec-dot {
+            width: 7px;
+            height: 7px;
+            background: var(--accent);
+            border-radius: 50%;
+            animation: blink 1s infinite alternate;
+        }
+
+        @keyframes blink {
+            0% {
+                opacity: 0.25;
+            }
+
+            100% {
+                opacity: 1;
+            }
+        }
+
+        /* Buttons */
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            background: var(--accent);
+            color: #fff;
+            border: none;
+            padding: 0.65rem 1.3rem;
+            font-size: 0.9rem;
+            font-weight: 600;
+            border-radius: 10px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 14px var(--accent-glow);
+        }
+
+        .btn:hover {
+            filter: brightness(1.15);
+            transform: translateY(-1px);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn:disabled {
+            background: #e5e7eb;
+            color: #9ca3af;
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: transparent;
+            border: 1.5px solid var(--accent);
+            color: var(--accent);
+            box-shadow: none;
+        }
+
+        .btn-secondary:hover {
+            background: var(--accent-dim);
+            color: var(--accent);
+        }
+
+        .filters-container {
+            display: flex;
+            justify-content: center;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin-top: 0.2rem;
+            margin-bottom: 0.8rem;
+            width: 100%;
+        }
+
+        .filter-btn {
+            background: #f3f4f6;
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            color: var(--text-dim);
+            padding: 0.45rem 1rem;
+            font-size: 0.8rem;
+            font-weight: 600;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+
+        .filter-btn:hover {
+            background: #e5e7eb;
+            color: var(--text);
+            border-color: rgba(0, 0, 0, 0.15);
+        }
+
+        .filter-btn.active {
+            background: var(--accent-dim);
+            color: var(--accent);
+            border-color: var(--accent);
+        }
+
+        .countdown-num {
+            font-size: 6.5rem;
+            font-weight: 800;
+            color: #fff;
+            text-shadow: 0 4px 20px rgba(75, 85, 99, 0.7);
+        }
+
+        .tick-animation {
+            animation: pulseCount 0.9s ease-in-out forwards;
+        }
+
+        @keyframes pulseCount {
+            0% {
+                transform: scale(0.3);
+                opacity: 0;
+            }
+
+            30% {
+                transform: scale(1.25);
+                opacity: 1;
+            }
+
+            100% {
+                transform: scale(1);
+                opacity: 0;
+            }
+        }
+
+        footer {
+            margin-top: auto;
+            padding: 1.5rem;
+            color: var(--text-dim);
+            font-size: 0.8rem;
+            text-align: center;
+        }
+
+        /* Toast Notification */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: #ffffff;
+            color: var(--text);
+            padding: 0.8rem 1.2rem;
+            border-radius: 10px;
+            border: 1px solid var(--accent-dim);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+            transform: translateY(80px);
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            z-index: 100;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        @media (max-width: 600px) {
+            header h1 {
+                font-size: 1.6rem;
+            }
+
+            .app {
+                padding: 1.5rem 1rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app">
+        <header>
+            <h1>Kiowo Gesture</h1>
+            <p>Sensor privasi instan menggunakan isyarat tangan</p>
+        </header>
+
+        <div class="camera-card">
+            <div class="canvas-wrap">
+                <div id="loaderOverlay" class="loader-overlay">
+                    <div class="spinner"></div>
+                    <p id="loaderText">Memuat model deteksi tangan...</p>
+                </div>
+
+                <div id="recBadge" class="rec-badge">
+                    <div class="rec-dot"></div>
+                    <span id="recTimer">00:00</span>
+                </div>
+
+                <!-- Countdown Overlay -->
+                <div id="countdownOverlay"
+                    style="position: absolute; inset: 0; display: none; justify-content: center; align-items: center; background: rgba(0, 0, 0, 0.35); z-index: 8; pointer-events: none;">
+                    <div id="countdownNumber" class="countdown-num">3</div>
+                </div>
+
+                <video id="webcam" autoplay playsinline></video>
+                <canvas id="outputCanvas"></canvas>
+            </div>
+
+            <!-- IG Filters Selection -->
+            <div class="filters-container" id="filtersContainer" style="display: none;">
+                <button class="filter-btn active" data-filter="none">Normal</button>
+                <button class="filter-btn" data-filter="sakura">Pink Sakura</button>
+                <button class="filter-btn" data-filter="aden">Creamy Aden</button>
+                <button class="filter-btn" data-filter="lark">Fresh Lark</button>
+                <button class="filter-btn" data-filter="cyber">Sweet Cyber</button>
+                <button class="filter-btn" data-filter="warm">Golden Hour</button>
+                <button class="filter-btn" data-filter="vintage">Retro Retro</button>
+                <button class="filter-btn" data-filter="cool">Cool Cyan</button>
+                <button class="filter-btn" data-filter="mono">Vintage Mono</button>
+            </div>
+
+            <div class="controls">
+                <button id="btnStart" class="btn" disabled>Mulai Kamera</button>
+                <button id="btnRecord" class="btn" style="display:none;">Record</button>
+                <button id="btnStopRecord" class="btn btn-secondary" style="display:none;">Stop</button>
+                <button id="btnScreenshot" class="btn btn-secondary" style="display:none;">Capture</button>
+                <button id="btnDownload" class="btn" style="display:none;">Download</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast"></div>
+
+    <footer>
+        <p>&copy; 2026 Kiowo Gesture — Foto Kita</p>
+    </footer>
+
+    <script type="module">
+        import { FilesetResolver, HandLandmarker } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.8/vision_bundle.mjs";
+
+        const video = document.getElementById("webcam");
+        const canvas = document.getElementById("outputCanvas");
+        const ctx = canvas.getContext("2d");
+
+        const loaderOverlay = document.getElementById("loaderOverlay");
+        const loaderText = document.getElementById("loaderText");
+
+        const btnStart = document.getElementById("btnStart");
+        const btnRecord = document.getElementById("btnRecord");
+        const btnStopRecord = document.getElementById("btnStopRecord");
+        const btnScreenshot = document.getElementById("btnScreenshot");
+        const btnDownload = document.getElementById("btnDownload");
+        const filtersContainer = document.getElementById("filtersContainer");
+        const filterButtons = document.querySelectorAll(".filter-btn");
+
+        const recBadge = document.getElementById("recBadge");
+        const recTimer = document.getElementById("recTimer");
+        const toast = document.getElementById("toast");
+
+        let handLandmarker = null;
+        let webcamRunning = false;
+        let lastVideoTime = -1;
+        let results = null;
+        let rafId = null;
+        let activeFilter = "none";
+        let frozenFrame = null;
+        let detectedGesture = "none";
+        let autoCaptureStartTime = 0;
+        let autoCaptureTriggered = false;
+
+        // Filter button click listeners
+        filterButtons.forEach(btn => {
+            btn.addEventListener("click", () => {
+                filterButtons.forEach(b => b.classList.remove("active"));
+                btn.classList.add("active");
+                activeFilter = btn.dataset.filter;
+                showToast(`Filter: ${btn.textContent.trim().split(" ")[1] || btn.textContent.trim()}`);
+            });
+        });
+
+        // Recording state
+        let mediaRecorder = null;
+        let recordedChunks = [];
+        let recordStartTime = 0;
+        let recordInterval = null;
+        let isRecording = false;
+        let recordedVideoUrl = null;
+
+        // ── Toast ────────────────────────────────────────────────────────
+        let toastTimeout = null;
+        function showToast(msg) {
+            if (toastTimeout) {
+                clearTimeout(toastTimeout);
+            }
+            toast.textContent = msg;
+            toast.classList.add("show");
+            toastTimeout = setTimeout(() => toast.classList.remove("show"), 4500);
+        }
+
+        // ── Init MediaPipe ───────────────────────────────────────────────
+        async function initModel() {
+            try {
+                const vision = await FilesetResolver.forVisionTasks(
+                    "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.8/wasm"
+                );
+                handLandmarker = await HandLandmarker.createFromOptions(vision, {
+                    baseOptions: {
+                        modelAssetPath: "/model/hand_landmarker.task",
+                        delegate: "GPU"
+                    },
+                    runningMode: "VIDEO",
+                    numHands: 2,
+                    minHandDetectionConfidence: 0.5,
+                    minTrackingConfidence: 0.5
+                });
+                hideLoader();
+                showToast("Model berhasil dimuat");
+            } catch (e) {
+                console.warn("Local model failed, trying CDN...", e);
+                try {
+                    const vision = await FilesetResolver.forVisionTasks(
+                        "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.8/wasm"
+                    );
+                    handLandmarker = await HandLandmarker.createFromOptions(vision, {
+                        baseOptions: {
+                            modelAssetPath: "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
+                            delegate: "GPU"
+                        },
+                        runningMode: "VIDEO",
+                        numHands: 2,
+                        minHandDetectionConfidence: 0.5,
+                        minTrackingConfidence: 0.5
+                    });
+                    hideLoader();
+                    showToast("Model dimuat dari CDN");
+                } catch (e2) {
+                    loaderText.textContent = "Gagal memuat model. Periksa koneksi internet.";
+                    loaderText.style.color = "var(--accent)";
+                }
+            }
+        }
+
+        function hideLoader() {
+            loaderOverlay.style.opacity = "0";
+            setTimeout(() => loaderOverlay.style.display = "none", 300);
+            btnStart.removeAttribute("disabled");
+        }
+
+        initModel();
+
+        // ── Gesture Detection ────────────────────────────────────────────
+        function fingerUp(tip, pip, lm) {
+            return lm[tip].y < lm[pip].y;
+        }
+
+        function isPeace(lm) {
+            return fingerUp(8, 6, lm) && fingerUp(12, 10, lm)
+                && !fingerUp(16, 14, lm) && !fingerUp(20, 18, lm);
+        }
+
+
+
+        // 🖐️ Open Palm: all 4 fingers up + thumb extended
+        function isOpenPalm(lm) {
+            const thumbOut = lm[4].y < lm[3].y;
+            return thumbOut && fingerUp(8, 6, lm) && fingerUp(12, 10, lm)
+                && fingerUp(16, 14, lm) && fingerUp(20, 18, lm);
+        }
+
+        // 🤟 Rock Sign: thumb + index + pinky up, middle + ring down
+        function isRock(lm) {
+            const thumbOut = lm[4].y < lm[3].y;
+            return thumbOut && fingerUp(8, 6, lm) && !fingerUp(12, 10, lm)
+                && !fingerUp(16, 14, lm) && fingerUp(20, 18, lm);
+        }
+
+        // 🤙 Shaka / Call Me: thumb + pinky up, index + middle + ring down
+        function isShaka(lm) {
+            const thumbOut = lm[4].y < lm[3].y;
+            return thumbOut && !fingerUp(8, 6, lm) && !fingerUp(12, 10, lm)
+                && !fingerUp(16, 14, lm) && fingerUp(20, 18, lm);
+        }
+
+        // ── Camera Toggle ────────────────────────────────────────────────
+        btnStart.addEventListener("click", async () => {
+            if (!handLandmarker) return;
+
+            if (webcamRunning) {
+                webcamRunning = false;
+                video.srcObject?.getTracks().forEach(t => t.stop());
+                cancelAnimationFrame(rafId);
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                btnStart.textContent = 'Mulai Kamera';
+                btnRecord.style.display = "none";
+                btnStopRecord.style.display = "none";
+                btnScreenshot.style.display = "none";
+                btnDownload.style.display = "none";
+                filtersContainer.style.display = "none";
+                if (isRecording) stopRecording();
+                showToast("Kamera dihentikan");
+            } else {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({
+                        video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: "user" },
+                        audio: false
+                    });
+                    video.srcObject = stream;
+                    video.addEventListener("loadedmetadata", () => {
+                        canvas.width = video.videoWidth;
+                        canvas.height = video.videoHeight;
+                        webcamRunning = true;
+                        lastVideoTime = -1;
+                        btnStart.textContent = 'Stop Kamera';
+                        btnRecord.style.display = "inline-flex";
+                        btnScreenshot.style.display = "inline-flex";
+                        filtersContainer.style.display = "flex";
+                        rafId = requestAnimationFrame(processFrame);
+                        showToast("Kamera aktif");
+                    });
+                } catch (err) {
+                    showToast("Gagal mengakses kamera");
+                }
+            }
+        });
+
+        // ── Frame Processing Loop ────────────────────────────────────────
+        function processFrame() {
+            if (!webcamRunning) return;
+
+            const now = performance.now();
+
+            // Detect hands
+            try {
+                if (video.currentTime !== lastVideoTime && video.readyState >= 2) {
+                    lastVideoTime = video.currentTime;
+                    results = handLandmarker.detectForVideo(video, now);
+                }
+            } catch (err) {
+                console.error("Detection error:", err);
+            }
+
+            // Detect gestures (priority order)
+            let gesture = "none";
+            if (results?.landmarks) {
+                for (const lm of results.landmarks) {
+                    if (isPeace(lm)) { gesture = "peace"; break; }
+
+                    if (isRock(lm)) { gesture = "rock"; break; }
+                    if (isOpenPalm(lm)) { gesture = "palm"; break; }
+                    if (isShaka(lm)) { gesture = "shaka"; break; }
+                }
+            }
+
+            // Auto Capture Timer for Peace Gesture
+            if (gesture === "peace") {
+                if (autoCaptureStartTime === 0) {
+                    autoCaptureStartTime = now;
+                    autoCaptureTriggered = false;
+                } else if (!autoCaptureTriggered && (now - autoCaptureStartTime > 2500)) {
+                    autoCaptureTriggered = true;
+                    showToast("📸 Auto-Capture!");
+                    btnScreenshot.click();
+                }
+            } else {
+                autoCaptureStartTime = 0;
+                autoCaptureTriggered = false;
+            }
+
+            // Show toast on gesture change
+            if (gesture !== detectedGesture) {
+                detectedGesture = gesture;
+                const gestureNames = {
+                    peace: "✌️ Peace → Blur & Auto-Capture",
+
+                    palm: "🖐️ Open Palm → Freeze",
+                    rock: "🤟 Rock → Glitch",
+                    shaka: "🤙 Shaka → Cinematic Vignette"
+                };
+                if (gestureNames[gesture]) showToast(gestureNames[gesture]);
+            }
+
+            // ── Freeze Frame: save current frame and keep showing it ──
+            if (gesture === "palm") {
+                if (!frozenFrame) {
+                    // Capture the current frame once
+                    ctx.save();
+                    ctx.translate(canvas.width, 0);
+                    ctx.scale(-1, 1);
+                    ctx.filter = "none";
+                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                    ctx.restore();
+                    frozenFrame = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                }
+                // Keep drawing the frozen frame
+                ctx.putImageData(frozenFrame, 0, 0);
+
+                // Draw "FROZEN" label
+                ctx.save();
+                ctx.font = "bold 18px Inter";
+                ctx.fillStyle = "rgba(255,255,255,0.7)";
+                ctx.textAlign = "center";
+                ctx.fillText("⏸ FROZEN", canvas.width / 2, 36);
+                ctx.restore();
+
+                rafId = requestAnimationFrame(processFrame);
+                return; // Skip all other rendering
+            } else {
+                frozenFrame = null;
+            }
+
+            // Draw frame
+            ctx.save();
+            ctx.translate(canvas.width, 0);
+            ctx.scale(-1, 1);
+
+            // Compute CSS filters dynamically
+            let filterString = "none";
+            if (activeFilter === "warm") {
+                filterString = "brightness(1.05) contrast(0.96) sepia(0.2) saturate(1.15)";
+            } else if (activeFilter === "vintage") {
+                filterString = "sepia(0.35) contrast(0.88) brightness(1.04) saturate(0.85)";
+            } else if (activeFilter === "cool") {
+                filterString = "hue-rotate(-12deg) saturate(1.1) contrast(1.03)";
+            } else if (activeFilter === "mono") {
+                filterString = "grayscale(1) contrast(1.12) brightness(0.94)";
+            } else if (activeFilter === "sakura") {
+                filterString = "brightness(1.08) contrast(0.95) saturate(1.12)";
+            } else if (activeFilter === "aden") {
+                filterString = "brightness(1.1) contrast(0.9) saturate(0.85) hue-rotate(-10deg)";
+            } else if (activeFilter === "lark") {
+                filterString = "brightness(1.08) contrast(1.05) saturate(1.25)";
+            } else if (activeFilter === "cyber") {
+                filterString = "brightness(1.0) contrast(1.1) saturate(1.2) hue-rotate(15deg)";
+            }
+
+            // ✌️ Peace → Blur
+            if (gesture === "peace") {
+                if (filterString === "none") {
+                    filterString = "blur(25px)";
+                } else {
+                    filterString += " blur(25px)";
+                }
+            }
+
+            ctx.filter = filterString;
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            // Reset filter for custom overlays
+            ctx.filter = "none";
+
+            // Apply professional color blend overlays for cute filters
+            if (activeFilter === "sakura") {
+                ctx.fillStyle = "rgba(255, 174, 185, 0.13)";
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            } else if (activeFilter === "aden") {
+                ctx.globalCompositeOperation = "soft-light";
+                ctx.fillStyle = "rgba(230, 190, 255, 0.25)";
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.globalCompositeOperation = "source-over";
+            } else if (activeFilter === "lark") {
+                ctx.globalCompositeOperation = "soft-light";
+                ctx.fillStyle = "rgba(240, 255, 200, 0.18)";
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.globalCompositeOperation = "source-over";
+            } else if (activeFilter === "cyber") {
+                ctx.globalCompositeOperation = "overlay";
+                ctx.fillStyle = "rgba(139, 92, 246, 0.15)";
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.globalCompositeOperation = "source-over";
+            } else if (activeFilter === "warm") {
+                ctx.globalCompositeOperation = "soft-light";
+                ctx.fillStyle = "rgba(255, 180, 100, 0.2)";
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.globalCompositeOperation = "source-over";
+            }
+
+            ctx.restore();
+
+            // ── Post-processing gesture effects (after ctx.restore) ──
+
+
+            // 🤟 Rock → Glitch / RGB Split
+            if (gesture === "rock") {
+                const shift = 8 + Math.floor(Math.random() * 6);
+                const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const copy = new Uint8ClampedArray(imgData.data);
+                const w = canvas.width, h = canvas.height;
+                for (let y = 0; y < h; y++) {
+                    for (let x = 0; x < w; x++) {
+                        const i = (y * w + x) * 4;
+                        // Shift red channel to the right
+                        const srcR = (y * w + Math.min(x + shift, w - 1)) * 4;
+                        imgData.data[i] = copy[srcR];
+                        // Shift blue channel to the left
+                        const srcB = (y * w + Math.max(x - shift, 0)) * 4;
+                        imgData.data[i + 2] = copy[srcB + 2];
+                    }
+                }
+                ctx.putImageData(imgData, 0, 0);
+
+                // Random scanlines for extra glitch feel
+                if (Math.random() > 0.5) {
+                    const sliceY = Math.floor(Math.random() * h);
+                    const sliceH = 2 + Math.floor(Math.random() * 8);
+                    const sliceShift = -20 + Math.floor(Math.random() * 40);
+                    const slice = ctx.getImageData(0, sliceY, w, sliceH);
+                    ctx.putImageData(slice, sliceShift, sliceY);
+                }
+            }
+
+            // 🤙 Shaka → Cinematic Vignette & Grayscale
+            if (gesture === "shaka") {
+                // Apply grayscale with contrast boost
+                const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const d = imgData.data;
+                for (let i = 0; i < d.length; i += 4) {
+                    const avg = (d[i] + d[i+1] + d[i+2]) / 3;
+                    const contrast = ((avg / 255) - 0.5) * 1.5 + 0.5;
+                    const val = Math.max(0, Math.min(255, contrast * 255));
+                    d[i] = val;
+                    d[i+1] = val;
+                    d[i+2] = val;
+                }
+                ctx.putImageData(imgData, 0, 0);
+
+                // Draw heavy cinematic vignette
+                ctx.save();
+                const gradient = ctx.createRadialGradient(
+                    canvas.width / 2, canvas.height / 2, canvas.height / 3,
+                    canvas.width / 2, canvas.height / 2, canvas.width / 1.2
+                );
+                gradient.addColorStop(0, "rgba(0,0,0,0)");
+                gradient.addColorStop(1, "rgba(0,0,0,0.85)");
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.restore();
+            }
+
+            rafId = requestAnimationFrame(processFrame);
+        }
+
+        // ── Capture ──────────────────────────────────────────────────────
+        btnScreenshot.addEventListener("click", () => {
+            if (!webcamRunning) return;
+            canvas.style.opacity = "0.3";
+            setTimeout(() => canvas.style.opacity = "1", 100);
+
+            const link = document.createElement("a");
+            const ts = new Date().toISOString().slice(0, 19).replace(/:/g, "-");
+            link.href = canvas.toDataURL("image/png");
+            link.download = `capture_${ts}.png`;
+            link.click();
+            showToast("Capture disimpan");
+        });
+
+        // ── Countdown function before recording ──────────────────────────
+        const countdownOverlay = document.getElementById("countdownOverlay");
+        const countdownNumber = document.getElementById("countdownNumber");
+
+        function runCountdown(callback) {
+            let count = 3;
+            countdownOverlay.style.display = "flex";
+            countdownNumber.textContent = count;
+
+            function triggerTick() {
+                countdownNumber.classList.remove("tick-animation");
+                void countdownNumber.offsetWidth; // Force reflow
+                countdownNumber.classList.add("tick-animation");
+            }
+
+            triggerTick();
+
+            const timer = setInterval(() => {
+                count--;
+                if (count > 0) {
+                    countdownNumber.textContent = count;
+                    triggerTick();
+                } else {
+                    clearInterval(timer);
+                    countdownOverlay.style.display = "none";
+                    callback();
+                }
+            }, 1000);
+        }
+
+        // ── Recording ────────────────────────────────────────────────────
+        btnRecord.addEventListener("click", () => {
+            if (!webcamRunning) return;
+
+            // Disable buttons during countdown
+            btnStart.disabled = true;
+            btnScreenshot.disabled = true;
+            btnRecord.disabled = true;
+
+            runCountdown(() => {
+                recordedChunks = [];
+
+                const stream = canvas.captureStream(30);
+                let opts = { mimeType: "video/webm;codecs=vp9" };
+                if (!MediaRecorder.isTypeSupported(opts.mimeType)) {
+                    opts = { mimeType: "video/webm;codecs=vp8" };
+                    if (!MediaRecorder.isTypeSupported(opts.mimeType)) {
+                        opts = { mimeType: "video/webm" };
+                    }
+                }
+
+                try {
+                    mediaRecorder = new MediaRecorder(stream, opts);
+                } catch (e) {
+                    showToast("Recording tidak didukung browser ini");
+                    btnStart.disabled = false;
+                    btnScreenshot.disabled = false;
+                    btnRecord.disabled = false;
+                    return;
+                }
+
+                mediaRecorder.ondataavailable = e => {
+                    if (e.data?.size > 0) recordedChunks.push(e.data);
+                };
+
+                mediaRecorder.onstop = () => {
+                    const blob = new Blob(recordedChunks, { type: "video/webm" });
+                    if (recordedVideoUrl) URL.revokeObjectURL(recordedVideoUrl);
+                    recordedVideoUrl = URL.createObjectURL(blob);
+                    btnDownload.style.display = "inline-flex";
+
+                    // Re-enable buttons after stop
+                    btnStart.disabled = false;
+                    btnScreenshot.disabled = false;
+                    btnRecord.disabled = false;
+                    showToast("Rekaman selesai");
+                };
+
+                mediaRecorder.start();
+                isRecording = true;
+                recordStartTime = Date.now();
+
+                btnRecord.style.display = "none";
+                btnStopRecord.style.display = "inline-flex";
+                btnDownload.style.display = "none";
+                recBadge.style.display = "flex";
+
+                tickTimer();
+                recordInterval = setInterval(tickTimer, 1000);
+                showToast("Merekam...");
+            });
+        });
+
+        function tickTimer() {
+            const s = Math.floor((Date.now() - recordStartTime) / 1000);
+            recTimer.textContent = `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+        }
+
+        function stopRecording() {
+            if (!isRecording) return;
+            mediaRecorder.stop();
+            isRecording = false;
+            clearInterval(recordInterval);
+            recBadge.style.display = "none";
+            btnStopRecord.style.display = "none";
+            btnRecord.style.display = "inline-flex";
+        }
+
+        btnStopRecord.addEventListener("click", stopRecording);
+
+        btnDownload.addEventListener("click", () => {
+            if (!recordedVideoUrl) return;
+            const link = document.createElement("a");
+            const ts = new Date().toISOString().slice(0, 19).replace(/:/g, "-");
+            link.href = recordedVideoUrl;
+            link.download = `recording_${ts}.webm`;
+            link.click();
+            showToast("Video diunduh");
+        });
+    </script>
+</body>
+
+</html>
