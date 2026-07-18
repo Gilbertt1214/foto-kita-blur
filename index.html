@@ -404,7 +404,7 @@
 
     <div id="toast" class="toast"></div>
 
-    <audio id="bgMusic" src="/model/foto-kita-blur.mp3" preload="auto"></audio>
+    <audio id="bgMusic" src="./foto-kita-blur.mp3" preload="auto"></audio>
 
     <footer>
         <p>&copy; 2026 Peace Gesture — kiomy</p>
@@ -488,7 +488,7 @@
                 );
                 handLandmarker = await HandLandmarker.createFromOptions(vision, {
                     baseOptions: {
-                        modelAssetPath: "/model/hand_landmarker.task",
+                        modelAssetPath: "./hand_landmarker.task",
                         delegate: "GPU"
                     },
                     runningMode: "VIDEO",
