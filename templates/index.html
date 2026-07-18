@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kiowo Gesture — Foto Kita</title>
+    <title>peace gesture</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
     <style>
@@ -353,7 +353,7 @@
 <body>
     <div class="app">
         <header>
-            <h1>Kiowo Gesture</h1>
+            <h1>peace gesture</h1>
             <p>Sensor privasi instan menggunakan isyarat tangan</p>
         </header>
 
@@ -404,8 +404,10 @@
 
     <div id="toast" class="toast"></div>
 
+    <audio id="bgMusic" src="/model/foto-kita-blur.mp3" preload="auto"></audio>
+
     <footer>
-        <p>&copy; 2026 Kiowo Gesture — Foto Kita</p>
+        <p>&copy; 2026 Peace Gesture — kiomy</p>
     </footer>
 
     <script type="module">
@@ -429,6 +431,14 @@
         const recBadge = document.getElementById("recBadge");
         const recTimer = document.getElementById("recTimer");
         const toast = document.getElementById("toast");
+        const bgMusic = document.getElementById("bgMusic");
+
+        bgMusic.addEventListener("ended", () => {
+            if (isRecording) {
+                stopRecording();
+                showToast("Rekaman 15 detik selesai");
+            }
+        });
 
         let handLandmarker = null;
         let webcamRunning = false;
@@ -867,6 +877,10 @@
 
             runCountdown(() => {
                 recordedChunks = [];
+                
+                // Play music immediately after countdown
+                bgMusic.currentTime = 0;
+                bgMusic.play().catch(e => console.log("Music play blocked", e));
 
                 const stream = canvas.captureStream(30);
                 let opts = { mimeType: "video/webm;codecs=vp9" };
@@ -926,6 +940,10 @@
 
         function stopRecording() {
             if (!isRecording) return;
+            
+            bgMusic.pause();
+            bgMusic.currentTime = 0;
+            
             mediaRecorder.stop();
             isRecording = false;
             clearInterval(recordInterval);
