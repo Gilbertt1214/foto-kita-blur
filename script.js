@@ -3,10 +3,8 @@ import { FilesetResolver, HandLandmarker } from "https://cdn.jsdelivr.net/npm/@m
         const video = document.getElementById("webcam");
         const canvas = document.getElementById("outputCanvas");
         const ctx = canvas.getContext("2d");
-
         const loaderOverlay = document.getElementById("loaderOverlay");
         const loaderText = document.getElementById("loaderText");
-
         const btnStart = document.getElementById("btnStart");
         const btnRecord = document.getElementById("btnRecord");
         const btnStopRecord = document.getElementById("btnStopRecord");
@@ -14,7 +12,6 @@ import { FilesetResolver, HandLandmarker } from "https://cdn.jsdelivr.net/npm/@m
         const btnDownload = document.getElementById("btnDownload");
         const filtersContainer = document.getElementById("filtersContainer");
         const filterButtons = document.querySelectorAll(".filter-btn");
-
         const recBadge = document.getElementById("recBadge");
         const recTimer = document.getElementById("recTimer");
         const toast = document.getElementById("toast");
@@ -38,7 +35,7 @@ import { FilesetResolver, HandLandmarker } from "https://cdn.jsdelivr.net/npm/@m
         let autoCaptureStartTime = 0;
         let autoCaptureTriggered = false;
 
-        // Filter button click listeners
+        
         filterButtons.forEach(btn => {
             btn.addEventListener("click", () => {
                 filterButtons.forEach(b => b.classList.remove("active"));
@@ -47,8 +44,7 @@ import { FilesetResolver, HandLandmarker } from "https://cdn.jsdelivr.net/npm/@m
                 showToast(`Filter: ${btn.textContent.trim().split(" ")[1] || btn.textContent.trim()}`);
             });
         });
-
-        // Recording state
+        
         let mediaRecorder = null;
         let recordedChunks = [];
         let recordStartTime = 0;
@@ -56,7 +52,6 @@ import { FilesetResolver, HandLandmarker } from "https://cdn.jsdelivr.net/npm/@m
         let isRecording = false;
         let recordedVideoUrl = null;
 
-        // ── Toast ────────────────────────────────────────────────────────
         let toastTimeout = null;
         function showToast(msg) {
             if (toastTimeout) {
@@ -67,7 +62,6 @@ import { FilesetResolver, HandLandmarker } from "https://cdn.jsdelivr.net/npm/@m
             toastTimeout = setTimeout(() => toast.classList.remove("show"), 4500);
         }
 
-        // ── Init MediaPipe ───────────────────────────────────────────────
         async function initModel() {
             try {
                 const vision = await FilesetResolver.forVisionTasks(
@@ -118,7 +112,6 @@ import { FilesetResolver, HandLandmarker } from "https://cdn.jsdelivr.net/npm/@m
 
         initModel();
 
-        // ── Gesture Detection ────────────────────────────────────────────
         function fingerUp(tip, pip, lm) {
             return lm[tip].y < lm[pip].y;
         }
@@ -128,30 +121,24 @@ import { FilesetResolver, HandLandmarker } from "https://cdn.jsdelivr.net/npm/@m
                 && !fingerUp(16, 14, lm) && !fingerUp(20, 18, lm);
         }
 
-
-
-        // 🖐️ Open Palm: all 4 fingers up + thumb extended
         function isOpenPalm(lm) {
             const thumbOut = lm[4].y < lm[3].y;
             return thumbOut && fingerUp(8, 6, lm) && fingerUp(12, 10, lm)
                 && fingerUp(16, 14, lm) && fingerUp(20, 18, lm);
         }
 
-        // 🤟 Rock Sign: thumb + index + pinky up, middle + ring down
         function isRock(lm) {
             const thumbOut = lm[4].y < lm[3].y;
             return thumbOut && fingerUp(8, 6, lm) && !fingerUp(12, 10, lm)
                 && !fingerUp(16, 14, lm) && fingerUp(20, 18, lm);
         }
 
-        // 🤙 Shaka / Call Me: thumb + pinky up, index + middle + ring down
         function isShaka(lm) {
             const thumbOut = lm[4].y < lm[3].y;
             return thumbOut && !fingerUp(8, 6, lm) && !fingerUp(12, 10, lm)
                 && !fingerUp(16, 14, lm) && fingerUp(20, 18, lm);
         }
 
-        // ── Camera Toggle ────────────────────────────────────────────────
         btnStart.addEventListener("click", async () => {
             if (!handLandmarker) return;
 
@@ -193,13 +180,11 @@ import { FilesetResolver, HandLandmarker } from "https://cdn.jsdelivr.net/npm/@m
             }
         });
 
-        // ── Frame Processing Loop ────────────────────────────────────────
         function processFrame() {
             if (!webcamRunning) return;
 
             const now = performance.now();
 
-            // Detect hands
             try {
                 if (video.currentTime !== lastVideoTime && video.readyState >= 2) {
                     lastVideoTime = video.currentTime;
@@ -209,7 +194,6 @@ import { FilesetResolver, HandLandmarker } from "https://cdn.jsdelivr.net/npm/@m
                 console.error("Detection error:", err);
             }
 
-            // Detect gestures (priority order)
             let gesture = "none";
             if (results?.landmarks) {
                 for (const lm of results.landmarks) {
@@ -221,7 +205,6 @@ import { FilesetResolver, HandLandmarker } from "https://cdn.jsdelivr.net/npm/@m
                 }
             }
 
-            // Auto Capture Timer for Peace Gesture
             if (gesture === "peace") {
                 if (autoCaptureStartTime === 0) {
                     autoCaptureStartTime = now;
@@ -236,7 +219,6 @@ import { FilesetResolver, HandLandmarker } from "https://cdn.jsdelivr.net/npm/@m
                 autoCaptureTriggered = false;
             }
 
-            // Show toast on gesture change
             if (gesture !== detectedGesture) {
                 detectedGesture = gesture;
                 const gestureNames = {
@@ -249,7 +231,6 @@ import { FilesetResolver, HandLandmarker } from "https://cdn.jsdelivr.net/npm/@m
                 if (gestureNames[gesture]) showToast(gestureNames[gesture]);
             }
 
-            // ── Freeze Frame: save current frame and keep showing it ──
             if (gesture === "palm") {
                 if (!frozenFrame) {
                     // Capture the current frame once
@@ -261,10 +242,8 @@ import { FilesetResolver, HandLandmarker } from "https://cdn.jsdelivr.net/npm/@m
                     ctx.restore();
                     frozenFrame = ctx.getImageData(0, 0, canvas.width, canvas.height);
                 }
-                // Keep drawing the frozen frame
+               
                 ctx.putImageData(frozenFrame, 0, 0);
-
-                // Draw "FROZEN" label
                 ctx.save();
                 ctx.font = "bold 18px Inter";
                 ctx.fillStyle = "rgba(255,255,255,0.7)";
@@ -273,17 +252,15 @@ import { FilesetResolver, HandLandmarker } from "https://cdn.jsdelivr.net/npm/@m
                 ctx.restore();
 
                 rafId = requestAnimationFrame(processFrame);
-                return; // Skip all other rendering
+                return; 
             } else {
                 frozenFrame = null;
             }
 
-            // Draw frame
             ctx.save();
             ctx.translate(canvas.width, 0);
             ctx.scale(-1, 1);
 
-            // Compute CSS filters dynamically
             let filterString = "none";
             if (activeFilter === "warm") {
                 filterString = "brightness(1.05) contrast(0.96) sepia(0.2) saturate(1.15)";
@@ -303,7 +280,6 @@ import { FilesetResolver, HandLandmarker } from "https://cdn.jsdelivr.net/npm/@m
                 filterString = "brightness(1.0) contrast(1.1) saturate(1.2) hue-rotate(15deg)";
             }
 
-            // ✌️ Peace → Blur
             if (gesture === "peace") {
                 if (filterString === "none") {
                     filterString = "blur(25px)";
@@ -315,10 +291,8 @@ import { FilesetResolver, HandLandmarker } from "https://cdn.jsdelivr.net/npm/@m
             ctx.filter = filterString;
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-            // Reset filter for custom overlays
             ctx.filter = "none";
 
-            // Apply professional color blend overlays for cute filters
             if (activeFilter === "sakura") {
                 ctx.fillStyle = "rgba(255, 174, 185, 0.13)";
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -346,10 +320,6 @@ import { FilesetResolver, HandLandmarker } from "https://cdn.jsdelivr.net/npm/@m
 
             ctx.restore();
 
-            // ── Post-processing gesture effects (after ctx.restore) ──
-
-
-            // 🤟 Rock → Glitch / RGB Split
             if (gesture === "rock") {
                 const shift = 8 + Math.floor(Math.random() * 6);
                 const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
@@ -358,17 +328,14 @@ import { FilesetResolver, HandLandmarker } from "https://cdn.jsdelivr.net/npm/@m
                 for (let y = 0; y < h; y++) {
                     for (let x = 0; x < w; x++) {
                         const i = (y * w + x) * 4;
-                        // Shift red channel to the right
                         const srcR = (y * w + Math.min(x + shift, w - 1)) * 4;
                         imgData.data[i] = copy[srcR];
-                        // Shift blue channel to the left
                         const srcB = (y * w + Math.max(x - shift, 0)) * 4;
                         imgData.data[i + 2] = copy[srcB + 2];
                     }
                 }
                 ctx.putImageData(imgData, 0, 0);
 
-                // Random scanlines for extra glitch feel
                 if (Math.random() > 0.5) {
                     const sliceY = Math.floor(Math.random() * h);
                     const sliceH = 2 + Math.floor(Math.random() * 8);
@@ -378,9 +345,7 @@ import { FilesetResolver, HandLandmarker } from "https://cdn.jsdelivr.net/npm/@m
                 }
             }
 
-            // 🤙 Shaka → Cinematic Vignette & Grayscale
             if (gesture === "shaka") {
-                // Apply grayscale with contrast boost
                 const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
                 const d = imgData.data;
                 for (let i = 0; i < d.length; i += 4) {
@@ -393,7 +358,6 @@ import { FilesetResolver, HandLandmarker } from "https://cdn.jsdelivr.net/npm/@m
                 }
                 ctx.putImageData(imgData, 0, 0);
 
-                // Draw heavy cinematic vignette
                 ctx.save();
                 const gradient = ctx.createRadialGradient(
                     canvas.width / 2, canvas.height / 2, canvas.height / 3,
@@ -409,7 +373,6 @@ import { FilesetResolver, HandLandmarker } from "https://cdn.jsdelivr.net/npm/@m
             rafId = requestAnimationFrame(processFrame);
         }
 
-        // ── Capture ──────────────────────────────────────────────────────
         btnScreenshot.addEventListener("click", () => {
             if (!webcamRunning) return;
             canvas.style.opacity = "0.3";
@@ -423,7 +386,6 @@ import { FilesetResolver, HandLandmarker } from "https://cdn.jsdelivr.net/npm/@m
             showToast("Capture disimpan");
         });
 
-        // ── Countdown function before recording ──────────────────────────
         const countdownOverlay = document.getElementById("countdownOverlay");
         const countdownNumber = document.getElementById("countdownNumber");
 
@@ -453,11 +415,9 @@ import { FilesetResolver, HandLandmarker } from "https://cdn.jsdelivr.net/npm/@m
             }, 1000);
         }
 
-        // ── Recording ────────────────────────────────────────────────────
         btnRecord.addEventListener("click", () => {
             if (!webcamRunning) return;
 
-            // Disable buttons during countdown
             btnStart.disabled = true;
             btnScreenshot.disabled = true;
             btnRecord.disabled = true;
@@ -465,7 +425,6 @@ import { FilesetResolver, HandLandmarker } from "https://cdn.jsdelivr.net/npm/@m
             runCountdown(() => {
                 recordedChunks = [];
                 
-                // Play music immediately after countdown
                 bgMusic.currentTime = 0;
                 bgMusic.play().catch(e => console.log("Music play blocked", e));
 
@@ -497,8 +456,6 @@ import { FilesetResolver, HandLandmarker } from "https://cdn.jsdelivr.net/npm/@m
                     if (recordedVideoUrl) URL.revokeObjectURL(recordedVideoUrl);
                     recordedVideoUrl = URL.createObjectURL(blob);
                     btnDownload.style.display = "inline-flex";
-
-                    // Re-enable buttons after stop
                     btnStart.disabled = false;
                     btnScreenshot.disabled = false;
                     btnRecord.disabled = false;
