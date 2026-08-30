@@ -127,18 +127,6 @@ import { FilesetResolver, HandLandmarker } from "https://cdn.jsdelivr.net/npm/@m
                 && fingerUp(16, 14, lm) && fingerUp(20, 18, lm);
         }
 
-        function isRock(lm) {
-            const thumbOut = lm[4].y < lm[3].y;
-            return thumbOut && fingerUp(8, 6, lm) && !fingerUp(12, 10, lm)
-                && !fingerUp(16, 14, lm) && fingerUp(20, 18, lm);
-        }
-
-        function isShaka(lm) {
-            const thumbOut = lm[4].y < lm[3].y;
-            return thumbOut && !fingerUp(8, 6, lm) && !fingerUp(12, 10, lm)
-                && !fingerUp(16, 14, lm) && fingerUp(20, 18, lm);
-        }
-
         btnStart.addEventListener("click", async () => {
             if (!handLandmarker) return;
 
@@ -199,9 +187,7 @@ import { FilesetResolver, HandLandmarker } from "https://cdn.jsdelivr.net/npm/@m
                 for (const lm of results.landmarks) {
                     if (isPeace(lm)) { gesture = "peace"; break; }
 
-                    if (isRock(lm)) { gesture = "rock"; break; }
                     if (isOpenPalm(lm)) { gesture = "palm"; break; }
-                    if (isShaka(lm)) { gesture = "shaka"; break; }
                 }
             }
 
@@ -224,9 +210,7 @@ import { FilesetResolver, HandLandmarker } from "https://cdn.jsdelivr.net/npm/@m
                 const gestureNames = {
                     peace: "✌️ Peace → Blur & Auto-Capture",
 
-                    palm: "🖐️ Open Palm → Freeze",
-                    rock: "🤟 Rock → Glitch",
-                    shaka: "🤙 Shaka → Cinematic Vignette"
+                    palm: "🖐️ Open Palm → Freeze"
                 };
                 if (gestureNames[gesture]) showToast(gestureNames[gesture]);
             }
@@ -319,56 +303,6 @@ import { FilesetResolver, HandLandmarker } from "https://cdn.jsdelivr.net/npm/@m
             }
 
             ctx.restore();
-
-            if (gesture === "rock") {
-                const shift = 8 + Math.floor(Math.random() * 6);
-                const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                const copy = new Uint8ClampedArray(imgData.data);
-                const w = canvas.width, h = canvas.height;
-                for (let y = 0; y < h; y++) {
-                    for (let x = 0; x < w; x++) {
-                        const i = (y * w + x) * 4;
-                        const srcR = (y * w + Math.min(x + shift, w - 1)) * 4;
-                        imgData.data[i] = copy[srcR];
-                        const srcB = (y * w + Math.max(x - shift, 0)) * 4;
-                        imgData.data[i + 2] = copy[srcB + 2];
-                    }
-                }
-                ctx.putImageData(imgData, 0, 0);
-
-                if (Math.random() > 0.5) {
-                    const sliceY = Math.floor(Math.random() * h);
-                    const sliceH = 2 + Math.floor(Math.random() * 8);
-                    const sliceShift = -20 + Math.floor(Math.random() * 40);
-                    const slice = ctx.getImageData(0, sliceY, w, sliceH);
-                    ctx.putImageData(slice, sliceShift, sliceY);
-                }
-            }
-
-            if (gesture === "shaka") {
-                const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                const d = imgData.data;
-                for (let i = 0; i < d.length; i += 4) {
-                    const avg = (d[i] + d[i+1] + d[i+2]) / 3;
-                    const contrast = ((avg / 255) - 0.5) * 1.5 + 0.5;
-                    const val = Math.max(0, Math.min(255, contrast * 255));
-                    d[i] = val;
-                    d[i+1] = val;
-                    d[i+2] = val;
-                }
-                ctx.putImageData(imgData, 0, 0);
-
-                ctx.save();
-                const gradient = ctx.createRadialGradient(
-                    canvas.width / 2, canvas.height / 2, canvas.height / 3,
-                    canvas.width / 2, canvas.height / 2, canvas.width / 1.2
-                );
-                gradient.addColorStop(0, "rgba(0,0,0,0)");
-                gradient.addColorStop(1, "rgba(0,0,0,0.85)");
-                ctx.fillStyle = gradient;
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-                ctx.restore();
-            }
 
             rafId = requestAnimationFrame(processFrame);
         }
